@@ -6,7 +6,9 @@ const fccTesting = require('./freeCodeCamp/fcctesting.js');
 const session = require('express-session');
 const passport = require('passport');
 const { ObjectID } = require('mongodb');
+const LocalStrategy = require('passport-local');
 const app = express();
+
 
 
 fccTesting(app); //For FCC testing purposes
@@ -39,6 +41,19 @@ myDB(async client => {
       message: 'Please log in'
     });
   });
+/* 
+A strategy is a way of authenticating a user. 
+You can use a strategy for allowing users to authenticate based on locally saved information 
+*/
+  passport.use(new LocalStrategy((username, password, done) => {
+    myDataBase.findOne({ username: username }, (err, user) => {
+      console.log(`User ${username} attempted to log in.`);
+      if (err) return done(err);
+      if (!user) return done(null, false);
+      if (password !== user.password) return done(null, false);
+      return done(null, user);
+    });
+  }));
 
   // Serialization and deserialization here...
   passport.serializeUser((user, done) => {
@@ -50,6 +65,7 @@ myDB(async client => {
       done(null, doc);
     });
   });
+  
 
   // Be sure to add this... catch the error on the promises and display it on the app
 }).catch(e => {
