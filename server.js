@@ -38,9 +38,43 @@ myDB(async client => {
     // Change the response to render the Pug template
     res.render('index', {
       title: 'Connected to Database',
-      message: 'Please log in'
+      message: 'Please log in',
+      showLogin: true
     });
   });
+
+  //Made a POST call using the ./login route and redirect to the ./profile view
+  app.route('/login').post(passport.authenticate('local', { failureRedirect: '/' }), (req, res) => {
+    res.redirect('/profile');
+  })
+
+  // make a GET call to route ./profile to render the profile view of the app 
+  app
+  .route('/profile')
+  //ensureAuthenticated is added as a middleware for user authentication
+  .get(ensureAuthenticated, (req,res) => { 
+    res.render('profile', {
+      username: req.user.username //add the usename return from the req to a term of the object
+    });
+    
+ })
+
+//unauthenticate the user, and redirect to the home page
+ app.route('/logout')
+  .get((req, res) => {
+    req.logout(); //unauthenticate the user
+    res.redirect('/'); 
+});
+/**
+ * handling missing pages (404). 
+ * The common way to handle this in Node 
+ * is with the adding the following middleware.
+ */
+app.use((req, res, next) => {
+  res.status(404)
+    .type('text')
+    .send('Not Found');
+});
 /* 
 A strategy is a way of authenticating a user. 
 You can use a strategy for allowing users to authenticate based on locally saved information 
@@ -73,6 +107,16 @@ You can use a strategy for allowing users to authenticate based on locally saved
     res.render('index', { title: e, message: 'Unable to connect to database' });
   });
 });
+
+/**
+ * middlewre that Authenticate the user before the allowing the log in
+ */
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.redirect('/');
+};
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
