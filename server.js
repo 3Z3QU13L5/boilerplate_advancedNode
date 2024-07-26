@@ -7,6 +7,7 @@ const session = require('express-session');
 const passport = require('passport');
 const { ObjectID } = require('mongodb');
 const LocalStrategy = require('passport-local');
+const bcrypt = require('bcrypt') 
 const app = express();
 
 
@@ -39,13 +40,15 @@ myDB(async client => {
     res.render('index', {
       title: 'Connected to Database',
       message: 'Please log in',
-      showLogin: true
+      showLogin: true,
+      showRegistration: true
     });
   });
 
   //Made a POST call using the ./login route and redirect to the ./profile view
-  app.route('/login').post(passport.authenticate('local', { failureRedirect: '/' }), (req, res) => {
-    res.redirect('/profile');
+  app.route('/login')
+    .post(passport.authenticate('local', { failureRedirect: '/' }), (req, res) => {
+      res.redirect('/profile');
   })
 
   // make a GET call to route ./profile to render the profile view of the app 
@@ -65,6 +68,40 @@ myDB(async client => {
     req.logout(); //unauthenticate the user
     res.redirect('/'); 
 });
+
+/**
+ * Add the Register route to the app
+ */
+app.route('/register')
+  .post((req, res, next) => {
+    const hash = bcrypt.hashSync(req.body.password, 12); //Hash the passwords instead
+    myDataBase.findOne({ username: req.body.username }, (err, user) => { //Query database with findOne
+      // If there is an error, call next with the error
+      if(err){
+        next(err)
+      }else if (user) { //If a user is returned, redirect back to home
+        res.redirect('/')
+      } else { //If a user is not found and no errors occur, then insertOne into the database
+        myDataBase.insertOne( {
+          username: req.body.username,
+          password: hash
+        }, (err, doc) => {
+          if (err) {
+            res.redirect('/');
+          } else {
+            // The inserted document is held within
+            // the ops property of the doc
+            next(null, doc.ops[0]);
+          }
+        })
+      }
+    })
+  }, passport.authenticate('local', { failureRedirect: '/' }),
+  (req, res, next) => {
+    res.redirect('/profile');
+  })
+
+
 /**
  * handling missing pages (404). 
  * The common way to handle this in Node 
